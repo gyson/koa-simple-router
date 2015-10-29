@@ -1,5 +1,5 @@
 
-# koa-simple-router
+# koa-simple-router [![build status](https://travis-ci.org/gyson/koa-simple-router.svg)](https://travis-ci.org/gyson/koa-simple-router)
 
 Simple router for koa v2
 
@@ -21,7 +21,7 @@ app.use(router(_ => {
   _.get('/', (ctx, next) => {
     ctx.body = 'home page'
   })
-  
+
   _.get('/hello', (ctx, next) => {
     // ...
   })
