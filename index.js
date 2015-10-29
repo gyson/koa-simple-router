@@ -117,6 +117,40 @@ Router.prototype.router = function (prefix, fn) {
   })
 }
 
+// with default HEAD and OPTIONS method
+Router.prototype.map = function (path, obj) {
+  let map = {}
+  for (let key of Object.keys(obj)) {
+    let mw = obj[key]
+    if (Array.isArray(mw)) {
+      mw = compose(mw)
+    }
+    if (typeof mw !== 'function') {
+      throw new Error(mw + ' is not array or function (middleware)')
+    }
+    map[key.toUpperCase()] = mw
+  }
+  if (map['GET'] && !map['HEAD']) {
+    map['HEAD'] = map['GET']
+  }
+  if (!map['OPTIONS']) {
+    map['OPTIONS'] = (ctx, next) => {
+      ctx.status = 200
+      ctx.set('Allow', allowed)
+    }
+  }
+  let allowed = Object.keys(map).join(', ')
+  return this.all(path, (ctx, next) => {
+    let method = ctx.method
+    let mw = map[method]
+    if (mw) {
+      return mw(ctx, next)
+    }
+    ctx.status = 405
+    ctx.set('Allow', allowed)
+  })
+}
+
 Router.prototype._lookup = function (ctx, next, method, path) {
   let group = this._map[method] || this._all
   let index = -1
