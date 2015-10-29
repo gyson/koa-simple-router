@@ -1,61 +1,85 @@
-'use strict'
-
 /* global describe, it */
+
+'use strict'
 
 const assert = require('assert')
 const router = require('../index')
 const compose = require('koa-compose')
 
-function test (name, mw, ctx, next) {
-  it(name, done => {
-    ctx.done = done
-    compose([mw])(ctx, next).catch(done)
-  })
+function test (mw, obj) {
+  for (let key of Object.keys(obj)) {
+    let ctx = {
+      method: key.split(' ')[0],
+      path: key.split(' ')[1],
+      calls: [],
+
+      // for testing _.map({...})
+      _head: {},
+      set: (key, value) => {
+        ctx._head[key] = value
+      }
+    }
+    it(key, () => {
+      return compose([mw])(ctx).then(() => {
+        obj[key](ctx)
+      })
+    })
+  }
 }
 
 describe('simple router', () => {
   let mw = router(_ => {
     _.get('/path/:to/:dest', ctx => {
-      assert.equal(ctx.id, 0)
       assert.equal(ctx.params.to, 'to')
       assert.equal(ctx.params.dest, 'dest')
-      ctx.done()
+      ctx.calls.push(0)
     })
     _.get('/:yy', ctx => {
-      assert.equal(ctx.id, 1)
       assert.equal(ctx.params.yy, 'yy')
-      ctx.done()
+      ctx.calls.push(1)
     })
   })
 
-  test('GET /path/to/dest', mw, {id: 0, method: 'GET', path: '/path/to/dest'})
-
-  test('GET /yy', mw, {id: 1, method: 'GET', path: '/yy'})
+  test(mw, {
+    'GET /path/to/dest': ctx => {
+      assert.deepEqual(ctx.calls, [0])
+    },
+    'GET /yy': ctx => {
+      assert.deepEqual(ctx.calls, [1])
+    }
+  })
 })
 
 describe('prefix router', () => {
   let mw = router('/api', _ => {
     _.get('/hello', ctx => {
-      assert.equal(ctx.id, 0)
-      ctx.done()
+      ctx.calls.push(0)
     })
   })
 
-  test('GET /api/hello', mw, {id: 0, method: 'GET', path: '/api/hello'})
+  test(mw, {
+    'GET /api/hello': ctx => {
+      assert.deepEqual(ctx.calls, [0])
+    }
+  })
 
   let mw2 = router('/api/:user', _ => {
     _.get('/:count', (ctx, next) => {
-      assert.equal(ctx.id, 1)
       assert.equal(ctx.params.user, 'gyson')
       assert.equal(ctx.params.count, '10')
+      ctx.calls.push(1)
       return next()
     })
     _.get('/10', ctx => {
-      ctx.done()
+      ctx.calls.push(2)
     })
   })
 
-  test('GET /api/gyson/10', mw2, {id: 1, method: 'GET', path: '/api/gyson/10'})
+  test(mw2, {
+    'GET /api/gyson/10': ctx => {
+      assert.deepEqual(ctx.calls, [1, 2])
+    }
+  })
 })
 
 describe('nested router', t => {
@@ -63,46 +87,85 @@ describe('nested router', t => {
     _.router('/path', _ => {
       _.router('/:to', _ => {
         _.get('/:dest', ctx => {
-          assert.equal(ctx.id, 0)
           assert.equal(ctx.params.to, 'to')
           assert.equal(ctx.params.dest, 'dest')
-          ctx.done()
+          ctx.calls.push(0)
         })
       })
     })
     _.router('/test2', _ => {
       _.router('/:hello', _ => {
         _.get('/:cool?', ctx => {
-          assert.equal(ctx.id, 1)
           assert.equal(ctx.params.hello, 'hello')
           assert.equal(ctx.params.cool, 'cool')
-          ctx.done()
+          ctx.calls.push(1)
         })
         _.post('/:cool?', ctx => {
-          assert.equal(ctx.id, 2)
           assert.equal(ctx.params.hello, 'hello')
           assert.equal(ctx.params.cool, undefined)
-          ctx.done()
+          ctx.calls.push(2)
         })
         _.delete('/', ctx => {
-          assert.equal(ctx.id, 3)
-          ctx.done()
+          ctx.calls.push(3)
         })
       })
       _.delete('/', ctx => {
-        assert.equal(ctx.id, 4)
-        ctx.done()
+        ctx.calls.push(4)
       })
     })
   })
 
-  test('GET /path/to/dest', mw, {id: 0, method: 'GET', path: '/path/to/dest'})
+  test(mw, {
+    'GET /path/to/dest': ctx => {
+      assert.deepEqual(ctx.calls, [0])
+    },
+    'GET /test2/hello/cool': ctx => {
+      assert.deepEqual(ctx.calls, [1])
+    },
+    'POST /test2/hello': ctx => {
+      assert.deepEqual(ctx.calls, [2])
+    },
+    'DELETE /test2/hello': ctx => {
+      assert.deepEqual(ctx.calls, [3])
+    },
+    'DELETE /test2/': ctx => {
+      assert.deepEqual(ctx.calls, [4])
+    }
+  })
+})
 
-  test('GET /test2/hello/cool', mw, {id: 1, method: 'GET', path: '/test2/hello/cool'})
+describe('router map', () => {
+  let mw = router(_ => {
+    _.map('/hello', {
+      get: ctx => {
+        ctx.calls.push(0)
+      },
+      post: ctx => {
+        ctx.calls.push(1)
+      }
+    })
+  })
 
-  test('POST /test2/hello', mw, {id: 2, method: 'POST', path: '/test2/hello'})
+  test(mw, {
+    'GET /hello': ctx => {
+      assert.deepEqual(ctx.calls, [0])
+    },
+    'HEAD /hello': ctx => {
+      assert.deepEqual(ctx.calls, [0])
+    },
+    'POST /hello': ctx => {
+      assert.deepEqual(ctx.calls, [1])
+    },
+    'OPTIONS /hello': ctx => {
+      assert.deepEqual(ctx.calls, [])
+      assert.equal(ctx.status, 200)
 
-  test('DELETE /test2/hello', mw, {id: 3, method: 'DELETE', path: '/test2/hello'})
-
-  test('DELETE /test2/', mw, {id: 4, method: 'DELETE', path: '/test2/'})
+      let allowed = ctx._head['Allow'].split(', ').sort()
+      assert.deepEqual(allowed, ['GET', 'HEAD', 'OPTIONS', 'POST'])
+    },
+    'DELETE /hello': ctx => {
+      assert.deepEqual(ctx.calls, [])
+      assert.equal(ctx.status, 405) // not allowed
+    }
+  })
 })
