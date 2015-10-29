@@ -53,7 +53,7 @@ test('prefix router', t => {
 })
 
 test('nested router', t => {
-  t.plan(10)
+  t.plan(11)
 
   let mw = router(_ => {
     _.router('/path', _ => {
@@ -77,9 +77,12 @@ test('nested router', t => {
           t.same(ctx.params.hello, 'hello')
           t.same(ctx.params.cool, undefined)
         })
+        _.delete('/', ctx => {
+          t.same(ctx.id, 3)
+        })
       })
       _.delete('/', ctx => {
-        t.same(ctx.id, 3)
+        t.same(ctx.id, 4)
       })
     })
   })
@@ -87,5 +90,6 @@ test('nested router', t => {
   run(mw, {id: 0, method: 'GET', path: '/path/to/dest'})
   run(mw, {id: 1, method: 'GET', path: '/test2/hello/cool'})
   run(mw, {id: 2, method: 'POST', path: '/test2/hello'})
-  run(mw, {id: 3, method: 'DELETE', path: '/test2/'})
+  run(mw, {id: 3, method: 'DELETE', path: '/test2/hello'})
+  run(mw, {id: 4, method: 'DELETE', path: '/test2/'})
 })
