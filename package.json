@@ -1,0 +1,20 @@
+{
+  "name": "koa-simple-router",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "standard && node test"
+  },
+  "author": "gyson <eilian.yunsong@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "standard": "^5.3.1",
+    "tape": "^4.2.2"
+  },
+  "dependencies": {
+    "koa-compose": "^3.0.0",
+    "methods": "^1.1.1",
+    "path-to-regexp": "^1.2.1"
+  }
+}
