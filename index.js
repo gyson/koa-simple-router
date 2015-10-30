@@ -25,19 +25,10 @@ function setting (options) {
     return (ctx, next) => {
       let path = ctx.path
       if (prefix !== '/') {
-        let res = re.exec(path)
-        if (res == null) {
-          return next()
-        }
-        setParams(ctx, re.keys, res)
-
-        path = res[res.length - 1]
-        if (!path) {
-          path = '/'
-        }
-        if (path[0] !== '/') {
-          path = '/' + path
-        }
+        path = scanPrefix(re, ctx, ctx.path)
+      }
+      if (path === null) {
+        return next()
       }
       return ro._lookup(ctx, next, ctx.method, path)
     }
@@ -97,23 +88,14 @@ Router.prototype.router = function (prefix, fn) {
   let router = new Router(this._options, fn)
 
   return this.all('*', (ctx, next) => {
-    let path = ctx.params[0]
+    let path = ctx.params[0] || '/'
     ctx.params[0] = undefined
 
-    let res = re.exec(path)
-    if (res == null) {
+    path = scanPrefix(re, ctx, path)
+    if (path === null) {
       return next()
     }
-    setParams(ctx, re.keys, res)
-
-    let subpath = res[res.length - 1]
-    if (!subpath) {
-      subpath = '/'
-    }
-    if (subpath[0] !== '/') {
-      subpath = '/' + subpath
-    }
-    return router._lookup(ctx, next, ctx.method, subpath)
+    return router._lookup(ctx, next, ctx.method, path)
   })
 }
 
@@ -175,6 +157,23 @@ Router.prototype._lookup = function (ctx, next, method, path) {
     setParams(ctx, group[i].keys, res)
     return tryCatch(group[i].mw, ctx, () => dispatch(i + 1))
   }
+}
+
+function scanPrefix (re, ctx, path) {
+  let result = re.exec(path)
+  if (result == null) {
+    return null
+  }
+  setParams(ctx, re.keys, result)
+
+  path = result[result.length - 1]
+  if (!path) {
+    path = '/'
+  }
+  if (path[0] !== '/') {
+    path = '/' + path
+  }
+  return path
 }
 
 function prefixToRegexp (prefix, options) {
