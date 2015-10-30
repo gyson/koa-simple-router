@@ -1,8 +1,14 @@
 {
   "name": "koa-simple-router",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "",
   "main": "index.js",
+  "keywords": [
+    "koa",
+    "route",
+    "router",
+    "middleware"
+  ],
   "scripts": {
     "test": "standard && mocha"
   },
