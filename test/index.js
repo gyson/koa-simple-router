@@ -27,30 +27,7 @@ function test (mw, obj) {
   }
 }
 
-describe('simple router', () => {
-  let mw = router(_ => {
-    _.get('/path/:to/:dest', ctx => {
-      assert.equal(ctx.params.to, 'to')
-      assert.equal(ctx.params.dest, 'dest')
-      ctx.calls.push(0)
-    })
-    _.get('/:yy', ctx => {
-      assert.equal(ctx.params.yy, 'yy')
-      ctx.calls.push(1)
-    })
-  })
-
-  test(mw, {
-    'GET /path/to/dest': ctx => {
-      assert.deepEqual(ctx.calls, [0])
-    },
-    'GET /yy': ctx => {
-      assert.deepEqual(ctx.calls, [1])
-    }
-  })
-})
-
-describe('prefix router', () => {
+describe('router()', () => {
   let mw = router('/api', _ => {
     _.get('/hello', ctx => {
       ctx.calls.push(0)
@@ -82,7 +59,48 @@ describe('prefix router', () => {
   })
 })
 
-describe('nested router', t => {
+describe('_.verb()', () => {
+  let mw = compose([
+    router(_ => _
+      .get('/path',
+        (ctx, next) => {
+          ctx.calls.push(0)
+          return next().catch(e => {
+            ctx.calls.push(2)
+          })
+        },
+        (ctx, next) => {
+          ctx.calls.push(1)
+          throw new Error()
+        }
+      )
+      .post('/path2', (ctx, next) => {
+        ctx.calls.push(4)
+      })
+      .delete('/path3', (ctx, next) => {
+        ctx.calls.push(5)
+        return next()
+      })
+    ),
+    (ctx, next) => {
+      ctx.calls.push(-1)
+    }
+  ])
+
+  test(mw, {
+    'GET /path': ctx => {
+      assert.deepEqual(ctx.calls, [0, 1, 2])
+    },
+    'POST /path2': ctx => {
+      assert.deepEqual(ctx.calls, [4])
+    },
+    'DELETE /path3': ctx => {
+      assert.deepEqual(ctx.calls, [5, -1])
+    }
+  })
+})
+
+describe('_.router()', () => {
   let mw = router(_ => {
     _.router('/path', _ => {
       _.router('/:to', _ => {
@@ -134,7 +152,7 @@ describe('nested router', t => {
   })
 })
 
-describe('router map', () => {
+describe('_.map()', () => {
   let mw = router(_ => {
     _.map('/hello', {
       get: ctx => {
@@ -166,6 +184,39 @@ describe('router map', () => {
     'DELETE /hello': ctx => {
       assert.deepEqual(ctx.calls, [])
       assert.equal(ctx.status, 405) // not allowed
+    }
+  })
+})
+
+describe('router.setting()', () => {
+  // it('GET /path/to/dest', () => {})
+  // let router2 = router.setting({})
+  // let router3 = router2.setting({})
+  //
+  // router2(_ => {
+  //   // _
+  // })
+})
+
+describe('compound router', () => {
+  let mw = router(_ => {
+    _.get('/path/:to/:dest', ctx => {
+      assert.equal(ctx.params.to, 'to')
+      assert.equal(ctx.params.dest, 'dest')
+      ctx.calls.push(0)
+    })
+    _.get('/:yy', ctx => {
+      assert.equal(ctx.params.yy, 'yy')
+      ctx.calls.push(1)
+    })
+  })
+
+  test(mw, {
+    'GET /path/to/dest': ctx => {
+      assert.deepEqual(ctx.calls, [0])
+    },
+    'GET /yy': ctx => {
+      assert.deepEqual(ctx.calls, [1])
     }
   })
 })
