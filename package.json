@@ -1,6 +1,6 @@
 {
   "name": "koa-simple-router",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Simple router for koa 2.x",
   "repository": {
     "type": "git",
