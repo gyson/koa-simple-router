@@ -1,7 +1,11 @@
 {
   "name": "koa-simple-router",
   "version": "0.0.2",
-  "description": "",
+  "description": "Simple router for koa 2.x",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gyson/koa-simple-router.git"
+  },
   "main": "index.js",
   "keywords": [
     "koa",
