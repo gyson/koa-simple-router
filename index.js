@@ -83,6 +83,9 @@ class Router {
           mw = compose(Array.from(arguments).slice(1))
         }
         let re = pathToRegexp(path, null, this._options)
+        if (method === 'get') {
+          this._register(re, mw, 'head')
+        }
         return this._register(re, mw, method)
       }
     }
