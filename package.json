@@ -19,8 +19,11 @@
   "author": "gyson <eilian.yunsong@gmail.com>",
   "license": "MIT",
   "devDependencies": {
+    "koa": "^2.0.0-alpha.2",
     "mocha": "^2.3.3",
-    "standard": "^5.3.1"
+    "sprintf-js": "^1.0.3",
+    "standard": "^5.3.1",
+    "supertest": "^1.1.0"
   },
   "dependencies": {
     "koa-compose": "^3.0.0",
