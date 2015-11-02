@@ -1,5 +1,6 @@
 'use strict'
 
+const os = require('os')
 const child = require('child_process')
 const sprintf = require('sprintf-js').sprintf
 
@@ -64,9 +65,20 @@ function benchKoaSimpleRouter (n) {
 }
 
 console.log(`
+## info
+
+    Time:       ${new Date()}
+    Machine:    ${os.platform()}, ${os.arch()}, ${os.cpus()[0].model} x ${os.cpus().length}
+    Nodejs:     ${process.versions.node}
+    V8:         ${process.versions.v8}
+
+## stats
+
+use \`wrk\` to test the Requests/sec (higher is better) for 1, 25, 50, 75, 100 routes.
+
 |    n | koa-route | koa-simple-router |
 |:-----|----------:|------------------:|`)
 
-for (let n of [1, 10, 50, 100]) {
+for (let n of [1, 25, 50, 75, 100]) {
   console.log(sprintf('| %4s | %9s | %17f |', n, benchKoaRoute(n), benchKoaSimpleRouter(n)))
 }
