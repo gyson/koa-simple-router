@@ -85,7 +85,7 @@ describe('router(prefix, init)', () => {
   })
 })
 
-describe('_.verb(mw)', () => {
+describe('_.verb(path, mw)', () => {
   let app = new Koa()
 
   app.use((ctx, next) => {
@@ -143,11 +143,11 @@ describe('_.verb(mw)', () => {
   })
 })
 
-describe('_.map(obj)', () => {
+describe('_.all(path, mw)', () => {
   let app = new Koa()
 
   app.use(router(_ => {
-    _.map('/hello', {
+    _.all('/hello', {
       get: ctx => {
         ctx.body = 'GET IT'
       },
@@ -196,6 +196,14 @@ describe('_.map(obj)', () => {
       .delete('/hello')
       .expect(405)
       .end(done)
+  })
+
+  it('should throw with _.all(path, { invalidMethod: x })', () => {
+    assert.throws(() => {
+      router(_ => _.all('/path', {
+        invalidMethod: (ctx, next) => {}
+      }))
+    })
   })
 })
 

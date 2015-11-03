@@ -1,5 +1,6 @@
 'use strict'
 
+const assert = require('assert')
 const methods = require('methods')
 const compose = require('koa-compose')
 const pathToRegexp = require('path-to-regexp')
@@ -11,6 +12,7 @@ module.exports = setting({
   end: true
 })
 
+// should use `.config()` ?
 function setting (options) {
   router.setting = setting
   return router
@@ -53,9 +55,8 @@ function setting (options) {
 }
 
 function setParams (ctx, keys, result) {
-  if (!ctx.params) {
-    ctx.params = {}
-  }
+  ctx.params = ctx.params || {}
+
   for (let j = 0; j < keys.length; j++) {
     let param = result[j + 1]
     if (param) {
@@ -72,113 +73,121 @@ function safeDecodeURIComponent (str) {
   }
 }
 
-class Router {
-  constructor (options, fn) {
-    this._options = options
-    this._map = {}
-    this._all = []
-    for (let method of methods) {
-      this[method] = function (path, mw) {
-        if (arguments.length > 2) {
-          mw = compose(Array.from(arguments).slice(1))
-        }
-        let re = pathToRegexp(path, null, this._options)
-        if (method === 'get') {
-          this._register(re, mw, 'head')
-        }
-        return this._register(re, mw, method)
-      }
-    }
-    fn(this)
-  }
+function Router (options, fn) {
+  this._options = options
+  this._map = {}
+  this._all = []
+  fn(this)
+}
 
-  all (path, mw) {
-    if (arguments.length > 2) {
-      mw = compose(Array.from(arguments).slice(1))
-    }
+for (let method of methods) {
+  Router.prototype[method] = function (path) {
+    let arr = Array.from(arguments).slice(1)
+
+    assert(arr.length !== 0)
+    assert(arr.every(x => typeof x === 'function'))
+
     let re = pathToRegexp(path, null, this._options)
-    return this._register(re, mw)
-  }
 
-  // with default HEAD and OPTIONS method
-  map (path, obj) {
-    let map = {}
-    for (let key of Object.keys(obj)) {
-      let mw = obj[key]
-      if (Array.isArray(mw)) {
-        mw = compose(mw)
-      }
-      if (typeof mw !== 'function') {
-        throw new Error(mw + ' is not array or function (middleware)')
-      }
-      map[key.toUpperCase()] = mw
-    }
-    if (map['GET'] && !map['HEAD']) {
-      map['HEAD'] = map['GET']
-    }
-    if (!map['OPTIONS']) {
-      map['OPTIONS'] = (ctx, next) => {
-        ctx.status = 200
-        ctx.set('Allow', allowed)
-      }
-    }
-    let allowed = Object.keys(map).join(', ')
-    return this.all(path, (ctx, next) => {
-      let method = ctx.method
-      let mw = map[method]
-      if (mw) {
-        return mw(ctx, next)
-      }
-      ctx.status = 405
-      ctx.set('Allow', allowed)
-    })
-  }
+    re.mw = arr.length > 1 ? compose(arr) : arr[0]
 
-  _register (re, mw, method) {
-    if (typeof mw !== 'function') {
-      throw new TypeError(mw + ' is not middleware function')
+    let METHOD = method.toUpperCase()
+
+    if (METHOD === 'GET') {
+      this._map['HEAD'] = this._map['HEAD'] || [].concat(this._all)
+      this._map['HEAD'].push(re)
     }
-    re.mw = mw
-    if (method) {
-      method = method.toUpperCase()
-      if (!this._map[method]) {
-        this._map[method] = [].concat(this._all)
-      }
-      this._map[method].push(re)
-    } else {
-      // .all
-      for (let method of Object.keys(this._map)) {
-        this._map[method].push(re)
-      }
-      this._all.push(re)
-    }
+
+    this._map[METHOD] = this._map[METHOD] || [].concat(this._all)
+    this._map[METHOD].push(re)
+
     return this
   }
+}
 
-  _lookup (ctx, next, method, path) {
-    let group = this._map[method] || this._all
-    let index = -1
-    return dispatch(0)
-    function dispatch (i) {
-      if (i <= index) {
-        return Promise.reject(new Error('next() called multiple times'))
-      }
-      let res = null
-      while (i < group.length) {
-        res = group[i].exec(path)
-        if (res == null) {
-          i += 1
-        } else {
-          break
-        }
-      }
-      index = i
-      if (res == null) {
-        return next()
-      }
-      setParams(ctx, group[i].keys, res)
-      return tryCatch(group[i].mw, ctx, () => dispatch(i + 1))
+Router.prototype.all = function (path) {
+  let arr = Array.from(arguments).slice(1).map(obj => {
+    if (typeof obj === 'function') {
+      return obj // just middleware
     }
+    return objectToMiddleware(obj)
+  })
+
+  assert(arr.length !== 0)
+  assert(arr.every(x => typeof x === 'function'))
+
+  let re = pathToRegexp(path, null, this._options)
+
+  re.mw = arr.length > 1 ? compose(arr) : arr[0]
+
+  for (let METHOD of Object.keys(this._map)) {
+    this._map[METHOD].push(re)
+  }
+  this._all.push(re)
+
+  return this
+}
+
+function objectToMiddleware (obj) {
+  // object mode
+  let map = {}
+  for (let key of Object.keys(obj)) {
+    let mw = obj[key]
+    if (Array.isArray(mw)) {
+      mw = compose(mw)
+    }
+    if (typeof mw !== 'function') {
+      throw new Error(mw + ' is not array or function (middleware)')
+    }
+    if (methods.indexOf(key.toLowerCase()) < 0) {
+      throw new Error(`invalid method "${key}"`)
+    }
+    // assert it's METHODS.indexof > 0
+    map[key.toUpperCase()] = mw
+  }
+  if (map['GET'] && !map['HEAD']) {
+    map['HEAD'] = map['GET']
+  }
+  if (!map['OPTIONS']) {
+    map['OPTIONS'] = (ctx, next) => {
+      ctx.status = 200
+      ctx.set('Allow', allowed)
+    }
+  }
+  let allowed = Object.keys(map).join(', ')
+  return (ctx, next) => {
+    let mw = map[ctx.method]
+    if (mw) {
+      return mw(ctx, next)
+    }
+    ctx.status = 405
+    ctx.set('Allow', allowed)
+  }
+}
+
+Router.prototype._lookup = function (ctx, next, method, path) {
+  let group = this._map[method] || this._all
+  let index = -1
+  return dispatch(0)
+  function dispatch (i) {
+    if (i <= index) {
+      return Promise.reject(new Error('next() called multiple times'))
+    }
+    let res = null
+    while (i < group.length) {
+      res = group[i].exec(path)
+      if (res == null) {
+        i += 1
+      } else {
+        break
+      }
+    }
+    index = i
+    if (res == null) {
+      return next()
+    }
+    setParams(ctx, group[i].keys, res)
+    return tryCatch(group[i].mw, ctx, () => dispatch(i + 1))
   }
 }
 
