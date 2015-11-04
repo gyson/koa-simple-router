@@ -26,7 +26,7 @@ function setting (options) {
 
     if (!prefix) {
       return (ctx, next) => {
-        return ro._lookup(ctx, next, ctx.method, ctx.path)
+        return ro._lookup(ctx, next, ctx.path)
       }
     }
 
@@ -49,7 +49,7 @@ function setting (options) {
         path = '/' + path
       }
 
-      return ro._lookup(ctx, next, ctx.method, path)
+      return ro._lookup(ctx, next, path)
     }
   }
 }
@@ -75,7 +75,7 @@ function safeDecodeURIComponent (str) {
 
 function Router (options, fn) {
   this._options = options
-  this._map = {}
+  this._map = new Map()
   this._all = []
   fn(this)
 }
@@ -94,12 +94,16 @@ for (let method of methods) {
     let METHOD = method.toUpperCase()
 
     if (METHOD === 'GET') {
-      this._map['HEAD'] = this._map['HEAD'] || [].concat(this._all)
-      this._map['HEAD'].push(re)
+      if (!this._map.has('HEAD')) {
+        this._map.set('HEAD', [].concat(this._all))
+      }
+      this._map.get('HEAD').push(re)
     }
 
-    this._map[METHOD] = this._map[METHOD] || [].concat(this._all)
-    this._map[METHOD].push(re)
+    if (!this._map.has(METHOD)) {
+      this._map.set(METHOD, [].concat(this._all))
+    }
+    this._map.get(METHOD).push(re)
 
     return this
   }
@@ -120,9 +124,7 @@ Router.prototype.all = function (path) {
 
   re.mw = arr.length > 1 ? compose(arr) : arr[0]
 
-  for (let METHOD of Object.keys(this._map)) {
-    this._map[METHOD].push(re)
-  }
+  this._map.forEach(value => value.push(re))
   this._all.push(re)
 
   return this
@@ -130,7 +132,7 @@ Router.prototype.all = function (path) {
 
 function objectToMiddleware (obj) {
   // object mode
-  let map = {}
+  let map = new Map()
   for (let key of Object.keys(obj)) {
     let mw = obj[key]
     if (Array.isArray(mw)) {
@@ -142,59 +144,55 @@ function objectToMiddleware (obj) {
     if (methods.indexOf(key.toLowerCase()) < 0) {
       throw new Error(`invalid method "${key}"`)
     }
-    // assert it's METHODS.indexof > 0
-    map[key.toUpperCase()] = mw
+    map.set(key.toUpperCase(), mw)
   }
-  if (map['GET'] && !map['HEAD']) {
-    map['HEAD'] = map['GET']
+  if (map.has('GET') && !map.has('HEAD')) {
+    map.set('HEAD', map.get('GET'))
   }
-  if (!map['OPTIONS']) {
-    map['OPTIONS'] = (ctx, next) => {
+  if (!map.has('OPTIONS')) {
+    map.set('OPTIONS', (ctx, next) => {
       ctx.status = 200
       ctx.set('Allow', allowed)
-    }
+    })
   }
-  let allowed = Object.keys(map).join(', ')
+  let allowed = Array.from(map.keys()).join(', ')
   return (ctx, next) => {
-    let mw = map[ctx.method]
-    if (mw) {
-      return mw(ctx, next)
+    let method = ctx.method
+    if (map.has(method)) {
+      return map.get(method)(ctx, next)
     }
     ctx.status = 405
     ctx.set('Allow', allowed)
   }
 }
 
-Router.prototype._lookup = function (ctx, next, method, path) {
-  let group = this._map[method] || this._all
+Router.prototype._lookup = function (ctx, next, path) {
+  let method = ctx.method
+  let group = this._map.has(method) ? this._map.get(method) : this._all
   let index = -1
   return dispatch(0)
   function dispatch (i) {
     if (i <= index) {
-      return Promise.reject(new Error('next() called multiple times'))
+      throw new Error('next() called multiple times')
     }
-    let res = null
     while (i < group.length) {
-      res = group[i].exec(path)
+      let res = group[i].exec(path)
       if (res == null) {
         i += 1
       } else {
-        break
+        index = i
+        setParams(ctx, group[i].keys, res)
+        let mw = group[i].mw
+        return mw(ctx, () => {
+          try {
+            return Promise.resolve(dispatch(i + 1))
+          } catch (e) {
+            return Promise.reject(e)
+          }
+        })
       }
     }
     index = i
-    if (res == null) {
-      return next()
-    }
-    setParams(ctx, group[i].keys, res)
-    return tryCatch(group[i].mw, ctx, () => dispatch(i + 1))
-  }
-}
-
-function tryCatch (mw, ctx, next) {
-  try {
-    return Promise.resolve(mw(ctx, next))
-  } catch (e) {
-    return Promise.reject(e)
+    return next()
   }
 }
