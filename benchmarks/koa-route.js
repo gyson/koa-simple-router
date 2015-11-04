@@ -23,10 +23,12 @@ function create (method) {
     const re = pathToRegexp(path, opts)
 
     return (ctx, next) => {
-      const m = re.exec(ctx.path)
-
       // method
       if (!matches(ctx, method)) return next()
+
+      // use optimized code
+      // https://github.com/koajs/route/pull/40/files
+      const m = re.exec(ctx.path)
 
       // path
       if (m) {
