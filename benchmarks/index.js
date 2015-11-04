@@ -22,10 +22,13 @@ function bench (script) {
   return /\d+(?:.\d+)?/.exec(output)[0]
 }
 
+const useBluebird = `global.Promise = require('bluebird')`
+
 function benchKoaRoute (n) {
   let result = bench(`(function () {
     'use strict'
 
+    ${useBluebird}
     const Koa = require('koa')
     const _ = require('./koa-route')
     const app = new Koa()
@@ -46,6 +49,7 @@ function benchKoaSimpleRouter (n) {
   let result = bench(`(function () {
     'use strict'
 
+    ${useBluebird}
     const Koa = require('koa')
     const router = require('../index')
     const app = new Koa()
@@ -72,13 +76,16 @@ console.log(`
     Nodejs:     ${process.versions.node}
     V8:         ${process.versions.v8}
 
+## bench
+
+* all tests use \`Bluebird\` as Promise polyfill
+* use \`wrk\` to test the Requests/sec (higher is better) for 1, 25, 50, 75, 100 routes.
+
 ## stats
 
-use \`wrk\` to test the Requests/sec (higher is better) for 1, 25, 50, 75, 100 routes.
+|   n | koa-route | koa-simple-router |
+|:----|----------:|------------------:|`)
 
-|    n | koa-route | koa-simple-router |
-|:-----|----------:|------------------:|`)
-
-for (let n of [1, 25, 50, 75, 100]) {
-  console.log(sprintf('| %4s | %9s | %17f |', n, benchKoaRoute(n), benchKoaSimpleRouter(n)))
+for (let n of [1, 50, 100, 150, 200]) {
+  console.log(sprintf('| %3s | %9s | %17f |', n, benchKoaRoute(n), benchKoaSimpleRouter(n)))
 }
