@@ -207,6 +207,55 @@ describe('_.all(path, mw)', () => {
   })
 })
 
+describe('_.param(name, mw)', () => {
+  it('should only be called once', done => {
+    let app = new Koa()
+
+    app.use(router(_ => {
+      _.param('user', (ctx, next) => {
+        ctx.body = [ctx.params.user, 1]
+        return next()
+      })
+      _.get('/:user', (ctx, next) => {
+        ctx.body.push(2)
+        return next()
+      })
+      _.get('/:user', (ctx, next) => {
+        ctx.body.push(3)
+      })
+    }))
+
+    request(app.callback())
+      .get('/hello')
+      .expect(200, ['hello', 1, 2, 3])
+      .end(done)
+  })
+
+  it('should be called even in prefix', done => {
+    let app = new Koa()
+
+    app.use(router('/api/:user', _ => {
+      _.param('user', (ctx, next) => {
+        ctx.body = [ctx.params.user, 1]
+        return next()
+      })
+      _.get('/hello', (ctx, next) => {
+        ctx.body.push(2)
+        return next()
+      })
+      _.get('/:yes', (ctx, next) => {
+        ctx.body.push(3)
+        ctx.body.push(ctx.params.yes)
+      })
+    }))
+
+    request(app.callback())
+      .get('/api/gyson/hello')
+      .expect(200, ['gyson', 1, 2, 3, 'hello'])
+      .end(done)
+  })
+})
+
 describe('router.setting(options)', () => {
   let app = new Koa()
   let router2 = router.setting({
