@@ -254,6 +254,24 @@ describe('_.param(name, mw)', () => {
       .expect(200, ['gyson', 1, 2, 3, 'hello'])
       .end(done)
   })
+
+  it('should not call it', done => {
+    let app = new Koa()
+
+    app.use(router(_ => {
+      _.param('user', (ctx, next) => {
+        ctx.body = 'no'
+      })
+      _.get(['/hello', '/okk/:user'], (ctx, next) => {
+        ctx.body = 'yes'
+      })
+    }))
+
+    request(app.callback())
+      .get('/hello')
+      .expect(200, 'yes')
+      .end(done)
+  })
 })
 
 describe('router.setting(options)', () => {

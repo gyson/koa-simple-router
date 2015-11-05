@@ -114,7 +114,7 @@ class Router {
     let symbol = Symbol()
 
     this._params.set(name, (ctx, next) => {
-      if (ctx[symbol]) {
+      if (ctx[symbol] || ctx.params[name] == null) {
         return next()
       }
       ctx[symbol] = true
