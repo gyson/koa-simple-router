@@ -129,7 +129,7 @@ app.use(router(_ => {
 
 Object mode: accept an object with method as key and middleware or array of middleware as value
 
-* auto `HEAD` response
+* auto `HEAD` response if `GET` present
 * auto `OPTIONS` response with `Allow` header
 * auto 405 response with `Allow` header
 
@@ -163,6 +163,29 @@ app.use(router(_ => {
     // Allow: GET, HEAD, POST, PUT, DELETE, OPTIONS
   })
 }))
+```
+
+### `_.param(param, ...mw)`
+
+Register middleware for named route parameters.
+
+```js
+app.use(router(_ => {
+  _.param('user', async (ctx, next) => {
+    ctx.user = await User.find(ctx.params.user)
+    // ...
+    return next()
+  })
+
+  _.get('/:user/do-x', (ctx, next) => {
+
+  })
+
+  _.post('/:user/do-y', (ctx, next) => {
+
+  })
+}))
+
 ```
 
 ## License
