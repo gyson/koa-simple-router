@@ -88,7 +88,7 @@ Default options is `{sensitive: false, strict: false, end: true}` ( same as [`pa
 
 ```js
 const Koa = require('koa')
-const router = require('router')
+const router = require('koa-simple-router')
 const app = new Koa()
 
 const strictRouter = router.setting({
