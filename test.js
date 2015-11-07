@@ -40,10 +40,10 @@ describe('router(init)', () => {
   })
 })
 
-describe('router(prefix, init)', () => {
+describe('router(options, init)', () => {
   let app = new Koa()
 
-  app.use(router('/api', _ => {
+  app.use(router({ prefix: '/api' }, _ => {
     _.get('/hello', ctx => {
       ctx.body = 'foo'
     })
@@ -65,7 +65,7 @@ describe('router(prefix, init)', () => {
 
   let app2 = new Koa()
 
-  app2.use(router('/api/:user', _ => {
+  app2.use(router({ prefix: '/api/:user' }, _ => {
     _.get('/:count', (ctx, next) => {
       assert.equal(ctx.params.user, 'gyson')
       assert.equal(ctx.params.count, '10')
@@ -82,6 +82,30 @@ describe('router(prefix, init)', () => {
       .get('/api/gyson/10')
       .expect(200, [1, 2])
       .end(done)
+  })
+
+  describe('should be able to setting strict', () => {
+    let app = new Koa()
+
+    app.use(router({ strict: true }, _ => {
+      _.get('/abc', ctx => {
+        ctx.body = 'abc'
+      })
+    }))
+
+    it('should match GET /abc', done => {
+      request(app.callback())
+        .get('/abc')
+        .expect(200, 'abc')
+        .end(done)
+    })
+
+    it('should not match GET /abc/ with { strict: true }', done => {
+      request(app.callback())
+        .get('/abc/')
+        .expect(404)
+        .end(done)
+    })
   })
 })
 
@@ -200,9 +224,11 @@ describe('_.all(path, mw)', () => {
 
   it('should throw with _.all(path, { invalidMethod: x })', () => {
     assert.throws(() => {
-      router(_ => _.all('/path', {
-        invalidMethod: (ctx, next) => {}
-      }))
+      router(_ => {
+        _.all('/path', {
+          invalidMethod: (ctx, next) => {}
+        })
+      })
     })
   })
 })
@@ -234,7 +260,7 @@ describe('_.param(name, mw)', () => {
   it('should be called even in prefix', done => {
     let app = new Koa()
 
-    app.use(router('/api/:user', _ => {
+    app.use(router({ prefix: '/api/:user' }, _ => {
       _.param('user', (ctx, next) => {
         ctx.body = [ctx.params.user, 1]
         return next()
@@ -274,37 +300,10 @@ describe('_.param(name, mw)', () => {
   })
 })
 
-describe('router.setting(options)', () => {
-  let app = new Koa()
-  let router2 = router.setting({
-    strict: true
-  })
-
-  app.use(router2(_ => {
-    _.get('/abc', ctx => {
-      ctx.body = 'abc'
-    })
-  }))
-
-  it('should match GET /abc', done => {
-    request(app.callback())
-      .get('/abc')
-      .expect(200, 'abc')
-      .end(done)
-  })
-
-  it('should not match GET /abc/ with { strict: true }', done => {
-    request(app.callback())
-      .get('/abc/')
-      .expect(404)
-      .end(done)
-  })
-})
-
 describe('compound router', () => {
   let app = new Koa()
 
-  app.use(router('/api/:username', _ => {
+  app.use(router({ prefix: '/api/:username' }, _ => {
     _.get('/do-abc', ctx => {
       assert.equal(ctx.params.username, 'gyson')
       ctx.body = [1, 2, 3]

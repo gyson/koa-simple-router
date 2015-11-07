@@ -5,28 +5,11 @@ const methods = require('methods')
 const compose = require('koa-compose')
 const pathToRegexp = require('path-to-regexp')
 
-module.exports = setting()
-
-// should use `.config()` ?
-function setting (options) {
-  // same default as `path-to-regexp`
-  options = Object.assign({
-    sensitive: false,
-    strict: false,
-    end: true
-  }, options)
-
-  let router = (prefix, fn) => {
-    if (typeof prefix === 'function') {
-      fn = prefix
-      prefix = null
-    }
-    return new Router(options, fn, prefix)._routes()
-  }
-
-  router.setting = setting
-
-  return router
+//
+// router({ prefix: '/path', ...setting }, _ => { })
+//
+module.exports = function router (options, init) {
+  return new Router(options, init)._routes()
 }
 
 class Layer {
@@ -50,7 +33,18 @@ class Layer {
 }
 
 class Router {
-  constructor (options, fn, prefix) {
+  constructor (options, fn) {
+    if (typeof options === 'function') {
+      fn = options
+      options = null
+    }
+
+    options = Object.assign({
+      sensitive: false,
+      strict: false,
+      end: true
+    }, options)
+
     this._options = options
     this._params = new Map()
     this._map = new Map()
@@ -58,6 +52,7 @@ class Router {
     this._stack = []
     this._prefix = undefined
 
+    let prefix = options.prefix
     if (prefix) {
       assert(typeof prefix === 'string', 'prefix should be a string')
       assert(prefix.slice(-1) !== '/', 'prefix should not end with "/"')
