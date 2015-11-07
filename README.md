@@ -67,10 +67,10 @@ Create a router middleware with options and init function.
 
 Default options is the same as [`path-to-regexp`](https://github.com/pillarjs/path-to-regexp).
 
-- ** prefix ** (default: `null`)
-- ** sensitive ** (default: `false`)
-- ** strict ** (default: `false`)
-- ** end ** (default: `true`)
+- **prefix** (default: `null`)
+- **sensitive** (default: `false`)
+- **strict** (default: `false`)
+- **end** (default: `true`)
 
 ```js
 const Koa = require('koa')
