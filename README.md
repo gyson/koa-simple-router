@@ -4,7 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/koa-simple-router.svg)](https://npmjs.org/package/koa-simple-router)
 [![build status](https://travis-ci.org/gyson/koa-simple-router.svg)](https://travis-ci.org/gyson/koa-simple-router)
 
-Simple and fast router for koa 2.x
+Simple and fast router for [koa](https://github.com/koajs/koa) 2.x
 
 ## Features
 
@@ -61,43 +61,27 @@ app.use(router(_ => {
 }))
 ```
 
-### `router(prefix, init)`
+### `router(options, init)`
 
-Create a router middleware with prefix string and init function.
+Create a router middleware with options and init function.
+
+Default options is the same as [`path-to-regexp`](https://github.com/pillarjs/path-to-regexp).
+
+- ** prefix ** (default: `null`)
+- ** sensitive ** (default: `false`)
+- ** strict ** (default: `false`)
+- ** end ** (default: `true`)
 
 ```js
 const Koa = require('koa')
 const router = require('koa-simple-router')
 const app = new Koa()
 
-app.use(router('/api', _ => {
+app.use(router({ prefix: '/api' }, _ => {
   _.get('/:user/id', (ctx, next) => {
 
   })
   _.post('/:user/id', (ctx, next) => {
-
-  })
-}))
-```
-
-### `router.setting(options)`
-
-Return another router function with different options.
-
-Default options is `{sensitive: false, strict: false, end: true}` ( same as [`path-to-regexp`](https://github.com/pillarjs/path-to-regexp) )
-
-```js
-const Koa = require('koa')
-const router = require('koa-simple-router')
-const app = new Koa()
-
-const strictRouter = router.setting({
-  sensitive: true,
-  strict: true
-})
-
-app.use(strictRouter(_ => {
-  _.get('/strict-and-CASE-SENSITIVE', (ctx, next) => {
 
   })
 }))
