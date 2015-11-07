@@ -40,6 +40,7 @@ class Router {
     }
 
     options = Object.assign({
+      prefix: null,
       sensitive: false,
       strict: false,
       end: true
@@ -50,7 +51,7 @@ class Router {
     this._map = new Map()
     this._all = []
     this._stack = []
-    this._prefix = undefined
+    this._prefix = null
 
     let prefix = options.prefix
     if (prefix) {
