@@ -121,32 +121,52 @@ Object mode: accept an object with method as key and middleware or array of midd
 app.use(router(_ => {
   _.all('/path/to/:recource', {
     get: (ctx, next) => {
-
+      // ...
     },
     post: (ctx, next) => {
-
-    }
-    // Allow: GET, HEAD, POST, OPTIONS
-  })
-  //
-  // you can mix middleware and object
-  //
-  _.all('/path2/to/:dest', authMiddleware, {
-    get: (ctx, next) => {
-
-    },
-    post: (ctx, next) => {
-
+      // ...
     },
     put: (ctx, next) => {
-
+      // ...
     },
     delete: (ctx, next) => {
-
+      // ...
     }
     // Allow: GET, HEAD, POST, PUT, DELETE, OPTIONS
   })
 }))
+```
+
+which is equivalent to
+
+```js
+app.use(router(_ => {
+  _.all('/path/to/:recource', (ctx, next) => {
+    switch (ctx.method) {
+      case 'GET':
+      case 'HEAD':
+        // ...
+        break
+      case 'POST':
+        // ...
+        break
+      case 'PUT':
+        // ...
+        break
+      case 'DELETE':
+        // ...
+        break
+      case 'OPTIONS':
+        ctx.status = 200
+        ctx.set('Allow', 'GET, HEAD, POST, PUT, DELETE, OPTIONS')
+        break
+      default:
+        ctx.status = 405 // method not allowed
+        ctx.set('Allow', 'GET, HEAD, POST, PUT, DELETE, OPTIONS')
+    }
+  }
+}))
+
 ```
 
 ### `_.param(param, ...mw)`
