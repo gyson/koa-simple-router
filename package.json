@@ -19,7 +19,8 @@
   "author": "gyson <eilian.yunsong@gmail.com>",
   "license": "MIT",
   "devDependencies": {
-    "koa": "^2.0.0-alpha.2",
+    "koa": "^2.0.0-alpha.3",
+    "koa-route": "^3.0.0",
     "mocha": "^2.3.3",
     "sprintf-js": "^1.0.3",
     "standard": "^5.3.1",
